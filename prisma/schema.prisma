@@ -1,0 +1,62 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+// Looking for ways to speed up your queries, or scale easily with your serverless or edge functions?
+// Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id        String   @id @default(cuid())
+  email     String   @unique
+  name      String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  
+  novels    Novel[]
+}
+
+model Novel {
+  id           String   @id @default(cuid())
+  userId       String
+  title        String?
+  ideaInput    String?  @map("idea_input")
+  mainIdea     String?  @map("main_idea")
+  genre        String?
+  characters   String?  // JSON string
+  styleTone    String?  @map("style_tone")
+  outline      String?  // JSON or text
+  coverPrompt  String?  @map("cover_prompt")
+  createdAt    DateTime @default(now()) @map("created_at")
+  updatedAt    DateTime @updatedAt @map("updated_at")
+  
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  chapters     Chapter[]
+}
+
+model Chapter {
+  id            String   @id @default(cuid())
+  novelId       String   @map("novel_id")
+  chapterNumber Int      @map("chapter_number")
+  chapterType   String   @map("chapter_type") // 'intro' | 'chapter' | 'outro'
+  content       String
+  createdAt     DateTime @default(now()) @map("created_at")
+  
+  novel         Novel    @relation(fields: [novelId], references: [id], onDelete: Cascade)
+}
+
+model Prompt {
+  id             String   @id @default(cuid())
+  toolName       String   @map("tool_name") // 'novel_writer'
+  stepName       String   @map("step_name") // 'idea_generator', 'title_generator', etc.
+  promptTemplate String   @map("prompt_template")
+  version        String   @default("1.0")
+  updatedAt      DateTime @updatedAt @map("updated_at")
+}
