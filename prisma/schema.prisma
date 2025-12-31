@@ -1,9 +1,6 @@
 // This is your Prisma schema file,
 // learn more about it in the docs: https://pris.ly/d/prisma-schema
 
-// Looking for ways to speed up your queries, or scale easily with your serverless or edge functions?
-// Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
-
 generator client {
   provider = "prisma-client-js"
 }
@@ -14,19 +11,169 @@ datasource db {
 }
 
 model User {
-  id        String   @id @default(cuid())
-  email     String   @unique
-  name      String?
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  id              String   @id @default(cuid())
+  email           String   @unique
+  name            String?
+  image           String?
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  // Relations
+  novels          Novel[]
+  notifications   Notification[]
+  settings        UserSettings?
 }
 
-model Post {
-  id        String   @id @default(cuid())
-  title     String
-  content   String?
-  published Boolean  @default(false)
-  authorId  String
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+model UserSettings {
+  id              String   @id @default(cuid())
+  userId          String   @unique
+  user            User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  // Preferences
+  theme           String   @default("light")
+  defaultLanguage String   @default("en")
+  autoSave        Boolean  @default(true)
+  emailNotifications Boolean @default(true)
+
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+}
+
+model Novel {
+  id              String   @id @default(cuid())
+  userId          String
+  user            User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  // Basic Info
+  title           String
+  currentTitle    String?
+  description     String?
+
+  // AI-generated story foundation
+  genre           String?
+  themes          String?
+  tone            String?
+  centralConflict String?
+  directionalEnding String?
+
+  // Story structure
+  outline         String?
+  chapterCount    Int      @default(0)
+  targetWordCount Int?
+
+  // Writing progress
+  currentChapter  Int      @default(1)
+  totalWords      Int      @default(0)
+  status          String   @default("idea") // idea, outlined, writing, completed
+
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  // Relations
+  chapters        Chapter[]
+  characters      Character[]
+  storyMemories   StoryMemory[]
+  notifications   Notification[]
+}
+
+model Chapter {
+  id              String   @id @default(cuid())
+  novelId         String
+  novel           Novel    @relation(fields: [novelId], references: [id], onDelete: Cascade)
+
+  chapterNumber   Int
+  title           String?
+  summary         String?
+  objectives      String?
+
+  // Content
+  content         String?
+  wordCount       Int      @default(0)
+
+  // Status tracking
+  status          String   @default("pending") // pending, in_progress, completed
+
+  // AI generation context
+  aiGenerated     Boolean  @default(false)
+  aiContextUsed   String?
+
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  // Relations
+  versions        ChapterVersion[]
+
+  @@unique([novelId, chapterNumber])
+}
+
+model ChapterVersion {
+  id              String   @id @default(cuid())
+  chapterId       String
+  chapter         Chapter  @relation(fields: [chapterId], references: [id], onDelete: Cascade)
+
+  content         String
+  wordCount       Int
+  versionLabel    String?
+  isSnapshot      Boolean  @default(false)
+
+  createdAt       DateTime @default(now())
+
+  @@index([chapterId])
+}
+
+model Character {
+  id              String   @id @default(cuid())
+  novelId         String
+  novel           Novel    @relation(fields: [novelId], references: [id], onDelete: Cascade)
+
+  name            String
+  role            String?  // protagonist, antagonist, supporting, etc.
+  age             String?
+  physicalAppearance String?
+  personalityTraits String?
+  backstory       String?
+  goals           String?
+  fears           String?
+
+  // Relationships with other characters
+  relationships   String?
+
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  @@index([novelId])
+}
+
+model StoryMemory {
+  id              String   @id @default(cuid())
+  novelId         String
+  novel           Novel    @relation(fields: [novelId], references: [id], onDelete: Cascade)
+
+  type            String   // plot_point, relationship, character_arc, setting, timeline
+  description     String
+  chapterContext String?  // Reference to relevant chapters
+  importance      String   @default("normal") // low, normal, high
+
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  @@index([novelId, type])
+}
+
+model Notification {
+  id              String   @id @default(cuid())
+  userId          String
+  user            User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  novelId         String?
+  novel           Novel?   @relation(fields: [novelId], references: [id], onDelete: SetNull)
+
+  type            String   // generation_complete, milestone, system_update
+  title           String
+  message         String
+  read            Boolean  @default(false)
+
+  createdAt       DateTime @default(now())
+
+  @@index([userId, read])
+  @@index([novelId])
 }
